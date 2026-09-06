@@ -5,44 +5,60 @@
   <title>Gestión de Cumpleaños y Celebraciones Trimestrales</title>
   <style>
     body { font-family: system-ui, -apple-system, sans-serif; margin: 20px; background: #f8fafc; color: #1e293b; }
-    .container { max-width: 950px; margin: 0 auto; }
+    .container { max-width: 1050px; margin: 0 auto; }
     .card { background: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    label { font-weight: 600; display: block; margin-bottom: 5px; }
+    label { font-weight: 600; display: block; margin-bottom: 5px; font-size: 13px; }
     input, button { padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 14px; }
     button { background: #2563eb; color: white; border: none; cursor: pointer; font-weight: 500; }
     button:hover { background: #1d4ed8; }
     .btn-secondary { background: #059669; }
     .btn-secondary:hover { background: #047857; }
+    .btn-amber { background: #d97706; }
+    .btn-amber:hover { background: #b45309; }
     .btn-outline { background: transparent; color: #334155; border: 1px solid #cbd5e1; }
     .btn-outline:hover { background: #f1f5f9; }
     .btn-del { background: #ef4444; padding: 4px 8px; margin-left: 8px; }
     .btn-del:hover { background: #dc2626; }
-    .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .toolbar { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
     ul { list-style: none; padding: 0; margin-top: 10px; max-height: 200px; overflow-y: auto; }
     li { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f1f5f9; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0; }
     .badge-ok { color: #15803d; background: #dcfce7; padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 12px; }
     .badge-fail { color: #b91c1c; background: #fee2e2; padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 12px; }
+    .badge-early { color: #1d4ed8; background: #dbeafe; padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 12px; }
     .count-badge { background: #e2e8f0; color: #0f172a; font-weight: bold; padding: 2px 8px; border-radius: 12px; font-size: 13px; }
+    .count-overload { background: #fee2e2; color: #991b1b; font-weight: bold; padding: 2px 8px; border-radius: 12px; font-size: 13px; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Gestor de Celebraciones y Cumpleaños</h2>
+    <h2>Gestor de Celebraciones y Cumpleaños Futuros</h2>
     
     <div class="card toolbar">
       <div>
-        <label for="maxDays">Distancia Máxima (X Días):</label>
-        <input type="number" id="maxDays" value="90" min="0" style="width: 90px;" onchange="calculate()">
+        <label for="refDate">Fecha Referencia (Hoy):</label>
+        <input type="date" id="refDate" onchange="calculate()">
       </div>
-      <div style="margin-left: auto; display: flex; gap: 10px;">
-        <!-- File input accepts .csv, text/csv, and all plain text types for mobile compatibility -->
+      <div>
+        <label for="maxDays">Máx. Días Después (X):</label>
+        <input type="number" id="maxDays" value="90" min="0" style="width: 70px;" onchange="calculate()">
+      </div>
+      <div>
+        <label for="maxEarlyDays">Máx. Días Antes (Y):</label>
+        <input type="number" id="maxEarlyDays" value="14" min="0" style="width: 70px;" onchange="calculate()">
+      </div>
+      <div>
+        <label for="maxCapacity">Aforo Máximo:</label>
+        <input type="number" id="maxCapacity" value="8" min="1" style="width: 70px;" onchange="calculate()">
+      </div>
+      <div style="margin-left: auto; display: flex; gap: 8px;">
+        <button class="btn-amber" onclick="addCompensatingCelebration()">⚡ Fecha Compensatoria</button>
         <input type="file" id="csvFileInput" accept=".csv, text/csv, text/plain, application/vnd.ms-excel" style="display: none;" onchange="importCSV(event)">
-        <button class="btn-outline" onclick="document.getElementById('csvFileInput').click()">📁 Subir CSV</button>
-        <button class="btn-secondary" onclick="exportDataCSV()">💾 Descargar CSV Datos</button>
-        <button class="btn-secondary" onclick="exportReportCSV()">📊 Descargar Reporte CSV</button>
+        <button class="btn-outline" onclick="document.getElementById('csvFileInput').click()">📁 CSV</button>
+        <button class="btn-secondary" onclick="exportDataCSV()">💾 Datos</button>
+        <button class="btn-secondary" onclick="exportReportCSV()">📊 Reporte</button>
       </div>
     </div>
 
@@ -68,12 +84,13 @@
     </div>
 
     <div class="card">
-      <h3>Resumen por Celebración</h3>
+      <h3>Resumen por Celebración Futura</h3>
       <table>
         <thead>
           <tr>
-            <th>Fecha de Celebración</th>
+            <th>Fecha Celebración Futura</th>
             <th>Total Personas</th>
+            <th>Estado Aforo</th>
             <th>Personas Asignadas</th>
           </tr>
         </thead>
@@ -87,10 +104,10 @@
         <thead>
           <tr>
             <th>Persona</th>
-            <th>Fecha Cumpleaños</th>
+            <th>Próximo Cumpleaños</th>
             <th>Celebración Asignada</th>
-            <th>Distancia</th>
-            <th>Estado (Límite X)</th>
+            <th>Diferencia Días</th>
+            <th>Estado (Límite X / Y)</th>
           </tr>
         </thead>
         <tbody id="resultsTable"></tbody>
@@ -102,24 +119,23 @@
     let events = [];
     let birthdays = [];
 
-    function getNextFutureOccurrence(bdayStr, eventStr) {
-      const [y1, m1, d1] = bdayStr.split('-').map(Number);
-      const [y2, m2, d2] = eventStr.split('-').map(Number);
+    // Set today's date as default reference
+    document.getElementById('refDate').value = new Date().toISOString().split('T')[0];
 
-      let bDate = Date.UTC(y1, m1 - 1, d1);
-      let eDate = Date.UTC(y2, m2 - 1, d2);
-      let diffDays = Math.round((eDate - bDate) / (1000 * 60 * 60 * 24));
+    // Get active future birthday date relative to reference date
+    function getNextFutureBday(bdayStr, refStr) {
+      const [yRef, mRef, dRef] = refStr.split('-').map(Number);
+      const [yB, mB, dB] = bdayStr.split('-').map(Number);
 
-      if (diffDays < 0 || diffDays > 180) {
-        bDate = Date.UTC(y2, m1 - 1, d1);
-        diffDays = Math.round((eDate - bDate) / (1000 * 60 * 60 * 24));
-        if (diffDays < 0) {
-          bDate = Date.UTC(y2 - 1, m1 - 1, d1);
-          diffDays = Math.round((eDate - bDate) / (1000 * 60 * 60 * 24));
-        }
+      const refTime = Date.UTC(yRef, mRef - 1, dRef);
+      let candidate = Date.UTC(yRef, mB - 1, dB);
+
+      if (candidate < refTime) {
+        candidate = Date.UTC(yRef + 1, mB - 1, dB);
       }
 
-      return diffDays;
+      const resDate = new Date(candidate);
+      return resDate.toISOString().split('T')[0];
     }
 
     function addEvent(dateStr) {
@@ -157,6 +173,73 @@
       render();
     }
 
+    function addCompensatingCelebration() {
+      const refStr = document.getElementById('refDate').value;
+      const futureEvents = events.filter(e => e >= refStr);
+
+      if (futureEvents.length === 0 || birthdays.length === 0) {
+        alert("Añada primero cumpleaños y fechas de celebración futuras.");
+        return;
+      }
+
+      const maxCap = parseInt(document.getElementById('maxCapacity').value, 10) || 8;
+      const maxY = parseInt(document.getElementById('maxEarlyDays').value, 10) || 14;
+
+      const eventCounts = {};
+      futureEvents.forEach(e => { eventCounts[e] = 0; });
+
+      birthdays.forEach(b => {
+        const nextBday = getNextFutureBday(b.date, refStr);
+        let minDiff = Infinity;
+        let closestEvent = null;
+
+        futureEvents.forEach(e => {
+          const bDate = new Date(nextBday);
+          const eDate = new Date(e);
+          const diffDays = Math.round((eDate - bDate) / (1000 * 60 * 60 * 24));
+
+          if (diffDays >= -maxY && diffDays < minDiff) {
+            minDiff = diffDays;
+            closestEvent = e;
+          }
+        });
+
+        if (closestEvent) eventCounts[closestEvent]++;
+      });
+
+      let overloadedEvent = null;
+      let maxCount = -1;
+
+      for (const [eDate, count] of Object.entries(eventCounts)) {
+        if (count > maxCap && count > maxCount) {
+          maxCount = count;
+          overloadedEvent = eDate;
+        }
+      }
+
+      if (!overloadedEvent) {
+        alert("¡Ninguna fecha futura supera el aforo máximo actual!");
+        return;
+      }
+
+      const overloadedDateObj = new Date(overloadedEvent);
+      let compDateObj = new Date(overloadedDateObj);
+      compDateObj.setDate(compDateObj.getDate() - 21);
+      
+      let newDateStr = compDateObj.toISOString().split('T')[0];
+      if (newDateStr < refStr) newDateStr = refStr;
+
+      if (!events.includes(newDateStr)) {
+        addEvent(newDateStr);
+        alert(`Fecha compensatoria creada: ${newDateStr}`);
+      } else {
+        compDateObj.setDate(compDateObj.getDate() + 7);
+        const altDateStr = compDateObj.toISOString().split('T')[0];
+        addEvent(altDateStr);
+        alert(`Fecha compensatoria creada: ${altDateStr}`);
+      }
+    }
+
     function render() {
       document.getElementById('eventsList').innerHTML = events.map((e, i) => 
         `<li>${e} <button class="btn-del" onclick="removeEvent(${i})">X</button></li>`
@@ -170,73 +253,106 @@
     }
 
     function calculate() {
+      const refStr = document.getElementById('refDate').value;
       const maxX = parseInt(document.getElementById('maxDays').value, 10) || 0;
+      const maxY = parseInt(document.getElementById('maxEarlyDays').value, 10) || 0;
+      const maxCap = parseInt(document.getElementById('maxCapacity').value, 10) || 8;
+      
       const tbodyResults = document.getElementById('resultsTable');
       const tbodySummary = document.getElementById('summaryTable');
       
       tbodyResults.innerHTML = '';
       tbodySummary.innerHTML = '';
 
-      if (events.length === 0 || birthdays.length === 0) {
-        tbodyResults.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#64748b;">Agregue o cargue cumpleaños y celebraciones para ver los resultados.</td></tr>';
-        tbodySummary.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#64748b;">Sin datos suficientes.</td></tr>';
+      // Filter events to FUTURE ONLY (>= reference date)
+      const futureEvents = events.filter(e => e >= refStr).sort();
+
+      if (futureEvents.length === 0 || birthdays.length === 0) {
+        tbodyResults.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#64748b;">No hay celebraciones futuras o cumpleaños registrados.</td></tr>';
+        tbodySummary.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#64748b;">Sin celebraciones futuras.</td></tr>';
         return;
       }
 
       const summaryMap = {};
-      events.forEach(e => { summaryMap[e] = []; });
+      futureEvents.forEach(e => { summaryMap[e] = []; });
 
       birthdays.forEach(b => {
-        let minDays = Infinity;
+        const futureBdayStr = getNextFutureBday(b.date, refStr);
+        let minDiff = Infinity;
         let closestEvent = null;
 
-        events.forEach(e => {
-          const diffDays = getNextFutureOccurrence(b.date, e);
-          if (diffDays >= 0 && diffDays < minDays) {
-            minDays = diffDays;
-            closestEvent = e;
+        futureEvents.forEach(e => {
+          const bDate = new Date(futureBdayStr);
+          const eDate = new Date(e);
+          const diffDays = Math.round((eDate - bDate) / (1000 * 60 * 60 * 24));
+
+          if (diffDays >= -maxY && diffDays < minDiff) {
+            if (summaryMap[e].length < maxCap || minDiff === Infinity) {
+              minDiff = diffDays;
+              closestEvent = e;
+            }
           }
         });
 
+        if (!closestEvent) {
+          futureEvents.forEach(e => {
+            const bDate = new Date(futureBdayStr);
+            const eDate = new Date(e);
+            const diffDays = Math.round((eDate - bDate) / (1000 * 60 * 60 * 24));
+            if (diffDays >= -maxY && diffDays < minDiff) {
+              minDiff = diffDays;
+              closestEvent = e;
+            }
+          });
+        }
+
         let statusText = '';
-        let isValid = false;
+        let badgeClass = 'badge-ok';
 
         if (closestEvent !== null) {
           summaryMap[closestEvent].push(b.name);
-          isValid = minDays <= maxX;
-          statusText = isValid ? 'Cumple Límite' : `Excede X (${maxX} d)`;
+          
+          if (minDiff < 0) {
+            statusText = `Adelantado (${Math.abs(minDiff)}d antes)`;
+            badgeClass = 'badge-early';
+          } else if (minDiff <= maxX) {
+            statusText = `Cumple Límite (+${minDiff}d)`;
+            badgeClass = 'badge-ok';
+          } else {
+            statusText = `Excede Límite (+${minDiff}d > ${maxX}d)`;
+            badgeClass = 'badge-fail';
+          }
         } else {
-          statusText = 'Sin celebración futura';
+          statusText = 'Sin celebración futura válida';
+          badgeClass = 'badge-fail';
         }
 
         const row = document.createElement('tr');
         row.innerHTML = `
           <td><strong>${b.name}</strong></td>
-          <td>${b.date}</td>
-          <td>${closestEvent ? closestEvent : '<em style="color:#ef4444;">Ninguna posterior</em>'}</td>
-          <td>${closestEvent ? minDays + ' días' : 'N/A'}</td>
-          <td>
-            <span class="${isValid ? 'badge-ok' : 'badge-fail'}">
-              ${statusText}
-            </span>
-          </td>
+          <td>${futureBdayStr}</td>
+          <td>${closestEvent ? closestEvent : '<em style="color:#ef4444;">Ninguna</em>'}</td>
+          <td>${closestEvent ? (minDiff >= 0 ? `+${minDiff} días` : `${minDiff} días`) : 'N/A'}</td>
+          <td><span class="${badgeClass}">${statusText}</span></td>
         `;
         tbodyResults.appendChild(row);
       });
 
-      events.forEach(e => {
+      futureEvents.forEach(e => {
         const assignedPeople = summaryMap[e] || [];
+        const isOverloaded = assignedPeople.length > maxCap;
+
         const row = document.createElement('tr');
         row.innerHTML = `
           <td><strong>${e}</strong></td>
-          <td><span class="count-badge">${assignedPeople.length}</span></td>
+          <td><span class="${isOverloaded ? 'count-overload' : 'count-badge'}">${assignedPeople.length} / ${maxCap}</span></td>
+          <td><span class="${isOverloaded ? 'badge-fail' : 'badge-ok'}">${isOverloaded ? 'Excede Aforo' : 'Aforo OK'}</span></td>
           <td>${assignedPeople.length > 0 ? assignedPeople.join(', ') : '<em style="color:#94a3b8;">Nadie asignado</em>'}</td>
         `;
         tbodySummary.appendChild(row);
       });
     }
 
-    // --- UNIVERSAL CSV IMPORTER ---
     function importCSV(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -244,30 +360,22 @@
       const reader = new FileReader();
       reader.onload = function(e) {
         let text = e.target.result;
-        // Strip Byte Order Mark (BOM) if present
-        if (text.charCodeAt(0) === 0xFEFF) {
-          text = text.substr(1);
-        }
+        if (text.charCodeAt(0) === 0xFEFF) { text = text.substr(1); }
 
         const lines = text.split(/\r\n|\n/);
 
         lines.forEach((line) => {
           if (!line.trim()) return;
-          
-          // Split by comma or semicolon
           const parts = line.split(/[,;]/).map(p => p.trim().replace(/^["']|["']$/g, ''));
           
           const col1 = parts[0] ? parts[0].toLowerCase() : '';
           if (col1.includes('tipo') || col1.includes('nombre') || col1.includes('persona')) return;
 
-          // Process 3-column CSV: (Tipo, Nombre, Fecha)
           if (parts.length >= 3 && (col1.includes('cumple') || col1.includes('celeb'))) {
             const [tipo, nombre, fecha] = parts;
             if (tipo.toLowerCase().includes('cumple')) addBirthday(nombre, fecha);
             if (tipo.toLowerCase().includes('celeb')) addEvent(fecha);
-          } 
-          // Process 2+ column CSV: (Nombre, Fecha, [Optional Celeb Date])
-          else if (parts.length >= 2) {
+          } else if (parts.length >= 2) {
             const dateCandidate1 = cleanDate(parts[1]);
             if (dateCandidate1) addBirthday(parts[0], dateCandidate1);
 
@@ -298,23 +406,31 @@
     }
 
     function exportReportCSV() {
+      const refStr = document.getElementById('refDate').value;
       const maxX = parseInt(document.getElementById('maxDays').value, 10) || 0;
-      let csvContent = "\uFEFFNombre,Fecha Cumpleaños,Celebración Cercana,Distancia (Días),Estado (Max X)\n";
+      const maxY = parseInt(document.getElementById('maxEarlyDays').value, 10) || 0;
+      const futureEvents = events.filter(e => e >= refStr).sort();
+
+      let csvContent = "\uFEFFNombre,Proximo Cumpleaños,Celebracion Asignada,Diferencia Dias,Estado\n";
 
       birthdays.forEach(b => {
-        let minDays = Infinity;
+        const futureBdayStr = getNextFutureBday(b.date, refStr);
+        let minDiff = Infinity;
         let closestEvent = "";
 
-        events.forEach(e => {
-          const diffDays = getNextFutureOccurrence(b.date, e);
-          if (diffDays >= 0 && diffDays < minDays) {
-            minDays = diffDays;
+        futureEvents.forEach(e => {
+          const bDate = new Date(futureBdayStr);
+          const eDate = new Date(e);
+          const diffDays = Math.round((eDate - bDate) / (1000 * 60 * 60 * 24));
+
+          if (diffDays >= -maxY && diffDays < minDiff) {
+            minDiff = diffDays;
             closestEvent = e;
           }
         });
 
-        const status = closestEvent ? (minDays <= maxX ? "Cumple Límite" : "Excede Límite") : "Sin celebración futura";
-        csvContent += `"${b.name}",${b.date},${closestEvent || "N/A"},${closestEvent ? minDays : "N/A"},${status}\n`;
+        const status = closestEvent ? (minDiff < 0 ? "Adelantado" : (minDiff <= maxX ? "Cumple Límite" : "Excede Límite")) : "Sin Celebración";
+        csvContent += `"${b.name}",${futureBdayStr},${closestEvent || "N/A"},${closestEvent ? minDiff : "N/A"},${status}\n`;
       });
 
       downloadFile(csvContent, "reporte_calculo_celebraciones.csv");
