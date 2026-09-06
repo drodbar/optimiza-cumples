@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Gestión de Cumpleaños y Celebraciones Trimestrales</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; margin: 20px; background: #f8fafc; color: #1e293b; }
+    .container { max-width: 950px; margin: 0 auto; }
+    .card { background: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    label { font-weight: 600; display: block; margin-bottom: 5px; }
+    input, button { padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 14px; }
+    button { background: #2563eb; color: white; border: none; cursor: pointer; font-weight: 500; }
+    button:hover { background: #1d4ed8; }
+    .btn-secondary { background: #059669; }
+    .btn-secondary:hover { background: #047857; }
+    .btn-outline { background: transparent; color: #334155; border: 1px solid #cbd5e1; }
+    .btn-outline:hover { background: #f1f5f9; }
+    .btn-del { background: #ef4444; padding: 4px 8px; margin-left: 8px; }
+    .btn-del:hover { background: #dc2626; }
+    .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    ul { list-style: none; padding: 0; margin-top: 10px; max-height: 200px; overflow-y: auto; }
+    li { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f1f5f9; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    .badge-ok { color: #15803d; background: #dcfce7; padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 12px; }
+    .badge-fail { color: #b91c1c; background: #fee2e2; padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 12px; }
+    .count-badge { background: #e2e8f0; color: #0f172a; font-weight: bold; padding: 2px 8px; border-radius: 12px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Gestor de Celebraciones y Cumpleaños</h2>
+    
+    <div class="card toolbar">
+      <div>
+        <label for="maxDays">Distancia Máxima (X Días):</label>
+        <input type="number" id="maxDays" value="90" min="0" style="width: 90px;" onchange="calculate()">
+      </div>
+      <div style="margin-left: auto; display: flex; gap: 10px;">
+        <!-- File input accepts .csv, text/csv, and all plain text types for mobile compatibility -->
+        <input type="file" id="csvFileInput" accept=".csv, text/csv, text/plain, application/vnd.ms-excel" style="display: none;" onchange="importCSV(event)">
+        <button class="btn-outline" onclick="document.getElementById('csvFileInput').click()">📁 Subir CSV</button>
+        <button class="btn-secondary" onclick="exportDataCSV()">💾 Descargar CSV Datos</button>
+        <button class="btn-secondary" onclick="exportReportCSV()">📊 Descargar Reporte CSV</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>Fechas de Celebración</h3>
+        <div style="display:flex; gap:8px;">
+          <input type="date" id="eventDate" style="flex:1;">
+          <button onclick="addEvent()">Agregar</button>
+        </div>
+        <ul id="eventsList"></ul>
+      </div>
+
+      <div class="card">
+        <h3>Cumpleaños</h3>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="personName" placeholder="Nombre" style="flex:1;">
+          <input type="date" id="bdayDate">
+          <button onclick="addBirthday()">Agregar</button>
+        </div>
+        <ul id="bdaysList"></ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Resumen por Celebración</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha de Celebración</th>
+            <th>Total Personas</th>
+            <th>Personas Asignadas</th>
+          </tr>
+        </thead>
+        <tbody id="summaryTable"></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>Asignación Detallada y Distancias</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Persona</th>
+            <th>Fecha Cumpleaños</th>
+            <th>Celebración Asignada</th>
+            <th>Distancia</th>
+            <th>Estado (Límite X)</th>
+          </tr>
+        </thead>
+        <tbody id="resultsTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    let events = [];
+    let birthdays = [];
+
+    function getNextFutureOccurrence(bdayStr, eventStr) {
+      const [y1, m1, d1] = bdayStr.split('-').map(Number);
+      const [y2, m2, d2] = eventStr.split('-').map(Number);
+
+      let bDate = Date.UTC(y1, m1 - 1, d1);
+      let eDate = Date.UTC(y2, m2 - 1, d2);
+      let diffDays = Math.round((eDate - bDate) / (1000 * 60 * 60 * 24));
+
+      if (diffDays < 0 || diffDays > 180) {
+        bDate = Date.UTC(y2, m1 - 1, d1);
+        diffDays = Math.round((eDate - bDate) / (1000 * 60 * 60 * 24));
+        if (diffDays < 0) {
+          bDate = Date.UTC(y2 - 1, m1 - 1, d1);
+          diffDays = Math.round((eDate - bDate) / (1000 * 60 * 60 * 24));
+        }
+      }
+
+      return diffDays;
+    }
+
+    function addEvent(dateStr) {
+      const dateVal = cleanDate(dateStr || document.getElementById('eventDate').value);
+      if (dateVal && !events.includes(dateVal)) {
+        events.push(dateVal);
+        events.sort();
+        if (!dateStr) document.getElementById('eventDate').value = '';
+        render();
+      }
+    }
+
+    function removeEvent(index) {
+      events.splice(index, 1);
+      render();
+    }
+
+    function addBirthday(nameStr, dateStr) {
+      const name = (nameStr || document.getElementById('personName').value).trim() || 'Persona';
+      const dateVal = cleanDate(dateStr || document.getElementById('bdayDate').value);
+      if (dateVal) {
+        if (!birthdays.some(b => b.name === name && b.date === dateVal)) {
+          birthdays.push({ id: Date.now() + Math.random(), name, date: dateVal });
+        }
+        if (!dateStr) {
+          document.getElementById('personName').value = '';
+          document.getElementById('bdayDate').value = '';
+        }
+        render();
+      }
+    }
+
+    function removeBirthday(id) {
+      birthdays = birthdays.filter(b => b.id !== id);
+      render();
+    }
+
+    function render() {
+      document.getElementById('eventsList').innerHTML = events.map((e, i) => 
+        `<li>${e} <button class="btn-del" onclick="removeEvent(${i})">X</button></li>`
+      ).join('');
+
+      document.getElementById('bdaysList').innerHTML = birthdays.map(b => 
+        `<li><strong>${b.name}</strong> (${b.date}) <button class="btn-del" onclick="removeBirthday(${b.id})">X</button></li>`
+      ).join('');
+
+      calculate();
+    }
+
+    function calculate() {
+      const maxX = parseInt(document.getElementById('maxDays').value, 10) || 0;
+      const tbodyResults = document.getElementById('resultsTable');
+      const tbodySummary = document.getElementById('summaryTable');
+      
+      tbodyResults.innerHTML = '';
+      tbodySummary.innerHTML = '';
+
+      if (events.length === 0 || birthdays.length === 0) {
+        tbodyResults.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#64748b;">Agregue o cargue cumpleaños y celebraciones para ver los resultados.</td></tr>';
+        tbodySummary.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#64748b;">Sin datos suficientes.</td></tr>';
+        return;
+      }
+
+      const summaryMap = {};
+      events.forEach(e => { summaryMap[e] = []; });
+
+      birthdays.forEach(b => {
+        let minDays = Infinity;
+        let closestEvent = null;
+
+        events.forEach(e => {
+          const diffDays = getNextFutureOccurrence(b.date, e);
+          if (diffDays >= 0 && diffDays < minDays) {
+            minDays = diffDays;
+            closestEvent = e;
+          }
+        });
+
+        let statusText = '';
+        let isValid = false;
+
+        if (closestEvent !== null) {
+          summaryMap[closestEvent].push(b.name);
+          isValid = minDays <= maxX;
+          statusText = isValid ? 'Cumple Límite' : `Excede X (${maxX} d)`;
+        } else {
+          statusText = 'Sin celebración futura';
+        }
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td><strong>${b.name}</strong></td>
+          <td>${b.date}</td>
+          <td>${closestEvent ? closestEvent : '<em style="color:#ef4444;">Ninguna posterior</em>'}</td>
+          <td>${closestEvent ? minDays + ' días' : 'N/A'}</td>
+          <td>
+            <span class="${isValid ? 'badge-ok' : 'badge-fail'}">
+              ${statusText}
+            </span>
+          </td>
+        `;
+        tbodyResults.appendChild(row);
+      });
+
+      events.forEach(e => {
+        const assignedPeople = summaryMap[e] || [];
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td><strong>${e}</strong></td>
+          <td><span class="count-badge">${assignedPeople.length}</span></td>
+          <td>${assignedPeople.length > 0 ? assignedPeople.join(', ') : '<em style="color:#94a3b8;">Nadie asignado</em>'}</td>
+        `;
+        tbodySummary.appendChild(row);
+      });
+    }
+
+    // --- UNIVERSAL CSV IMPORTER ---
+    function importCSV(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        let text = e.target.result;
+        // Strip Byte Order Mark (BOM) if present
+        if (text.charCodeAt(0) === 0xFEFF) {
+          text = text.substr(1);
+        }
+
+        const lines = text.split(/\r\n|\n/);
+
+        lines.forEach((line) => {
+          if (!line.trim()) return;
+          
+          // Split by comma or semicolon
+          const parts = line.split(/[,;]/).map(p => p.trim().replace(/^["']|["']$/g, ''));
+          
+          const col1 = parts[0] ? parts[0].toLowerCase() : '';
+          if (col1.includes('tipo') || col1.includes('nombre') || col1.includes('persona')) return;
+
+          // Process 3-column CSV: (Tipo, Nombre, Fecha)
+          if (parts.length >= 3 && (col1.includes('cumple') || col1.includes('celeb'))) {
+            const [tipo, nombre, fecha] = parts;
+            if (tipo.toLowerCase().includes('cumple')) addBirthday(nombre, fecha);
+            if (tipo.toLowerCase().includes('celeb')) addEvent(fecha);
+          } 
+          // Process 2+ column CSV: (Nombre, Fecha, [Optional Celeb Date])
+          else if (parts.length >= 2) {
+            const dateCandidate1 = cleanDate(parts[1]);
+            if (dateCandidate1) addBirthday(parts[0], dateCandidate1);
+
+            if (parts.length >= 3) {
+              const dateCandidate2 = cleanDate(parts[2]);
+              if (dateCandidate2) addEvent(dateCandidate2);
+            }
+          }
+        });
+
+        event.target.value = '';
+      };
+      reader.readAsText(file);
+    }
+
+    function cleanDate(str) {
+      if (!str) return null;
+      const cleaned = str.trim().replace(/^["']|["']$/g, '');
+      const match = cleaned.match(/\d{4}-\d{2}-\d{2}/);
+      return match ? match[0] : null;
+    }
+
+    function exportDataCSV() {
+      let csvContent = "\uFEFFTipo,Nombre,Fecha\n";
+      birthdays.forEach(b => { csvContent += `Cumpleaños,"${b.name}",${b.date}\n`; });
+      events.forEach((e, i) => { csvContent += `Celebración,"Celebración ${i + 1}",${e}\n`; });
+      downloadFile(csvContent, "cumpleanos_y_celebraciones.csv");
+    }
+
+    function exportReportCSV() {
+      const maxX = parseInt(document.getElementById('maxDays').value, 10) || 0;
+      let csvContent = "\uFEFFNombre,Fecha Cumpleaños,Celebración Cercana,Distancia (Días),Estado (Max X)\n";
+
+      birthdays.forEach(b => {
+        let minDays = Infinity;
+        let closestEvent = "";
+
+        events.forEach(e => {
+          const diffDays = getNextFutureOccurrence(b.date, e);
+          if (diffDays >= 0 && diffDays < minDays) {
+            minDays = diffDays;
+            closestEvent = e;
+          }
+        });
+
+        const status = closestEvent ? (minDays <= maxX ? "Cumple Límite" : "Excede Límite") : "Sin celebración futura";
+        csvContent += `"${b.name}",${b.date},${closestEvent || "N/A"},${closestEvent ? minDays : "N/A"},${status}\n`;
+      });
+
+      downloadFile(csvContent, "reporte_calculo_celebraciones.csv");
+    }
+
+    function downloadFile(content, fileName) {
+      const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  </script>
+</body>
+</html>
+
